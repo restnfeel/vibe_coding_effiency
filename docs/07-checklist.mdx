@@ -1,0 +1,140 @@
+---
+id: checklist
+title: 비용 절감 체크리스트
+sidebar_label: 07. 체크리스트
+---
+
+# 비용 절감 체크리스트
+
+프로젝트 시작 전, 개발 중, 세션 전환 시 각각 점검해야 할 항목들이다.
+
+---
+
+## 프로젝트 시작 전 설정
+
+### Cursor 설정
+
+- [ ] OpenRouter API 키 발급 및 Cursor에 연결
+- [ ] 자주 쓸 모델을 Custom Model로 등록 (Gemini Flash, Kimi k2.5 등)
+- [ ] `.cursorrules` 파일 생성 및 기본 Skills 등록
+- [ ] `CLAUDE.md` 파일 생성 및 프로젝트 컨텍스트 초기화
+
+### Opencode 설정
+
+- [ ] `npm install -g opencode-ai` 설치
+- [ ] `~/.opencode/config.json`에 OpenRouter + vLLM 프로바이더 등록
+- [ ] `skills/` 폴더 생성 및 기본 Skills 파일 작성
+  - [ ] `skills/api_dev.md`
+  - [ ] `skills/test_gen.md`
+  - [ ] `skills/code_review.md`
+  - [ ] `skills/refactor.md`
+
+### vLLM 설정 (GPU 보유 시)
+
+- [ ] `pip install vllm` 설치
+- [ ] 로컬 모델 다운로드 (예: `Qwen2.5-Coder-7B-Instruct`)
+- [ ] vLLM 서버 실행 스크립트 작성 및 테스트
+- [ ] Cursor/Opencode에서 `http://localhost:8000/v1` 연결 확인
+
+---
+
+## 개발 사이클 중 점검
+
+### 세션 시작 시
+
+- [ ] 이전 세션의 도메인 컨텍스트가 `CLAUDE.md`에 저장되어 있는가?
+- [ ] 현재 작업이 **설계(Opus급)** 인가 **반복 실행(경량)** 인가 구분했는가?
+- [ ] 해당 도메인의 Skills가 `.cursorrules` 또는 `skills/` 폴더에 있는가?
+
+### 모델 선정 전 확인
+
+- [ ] 이 작업에 **독립적 판단**이 필요한가? → 필요하면 Opus, 아니면 Auto
+- [ ] 같은 패턴의 작업이 반복될 예정인가? → 반복이면 Skills 먼저 작성
+- [ ] 현재 세션 컨텍스트가 과도하게 길지 않은가? → 길면 새 세션으로 분리
+
+### 세션 종료 시
+
+- [ ] 이번 세션의 주요 결정사항을 `CLAUDE.md`에 업데이트했는가?
+- [ ] 미완성 Task를 `CLAUDE.md`에 기록했는가?
+- [ ] 새로운 반복 패턴을 발견했다면 Skills 파일에 추가했는가?
+
+---
+
+## 비용 관리 점검
+
+### 주 1회
+
+- [ ] OpenRouter 대시보드에서 모델별 비용 사용량 확인
+- [ ] 가장 많이 쓴 모델이 해당 작업에 적절한가? (더 저렴한 대안 있는지 확인)
+- [ ] 반복적으로 쓰는 프롬프트를 Skills로 전환했는가?
+
+### 월 1회
+
+- [ ] 로컬 vLLM으로 오프로드 가능한 작업이 더 있는가?
+- [ ] Skills 파일이 최신 기술 스택을 반영하고 있는가?
+- [ ] 불필요하게 긴 컨텍스트를 유지한 세션이 있었는가?
+
+---
+
+## 작업 유형별 빠른 참조
+
+| 작업 | 도구 | 모델 | Skills 필요? |
+|------|------|------|-------------|
+| 도메인 설계 | Cursor | Opus 4.6 | 선택 |
+| Task 분리 | Cursor | Opus 4.6 | 선택 |
+| CRUD 구현 | Cursor / Opencode | Gemini Flash | 필수 |
+| 테스트 생성 | Opencode | Kimi k2.5 | 필수 |
+| 타입힌트 추가 | Opencode + vLLM | 로컬 모델 | 필수 |
+| 리팩터링 | Opencode + vLLM | 로컬 모델 | 필수 |
+| 코드 리뷰 | Cursor | Grok Code | 권장 |
+| 보안 감사 | Cursor | Opus 4.6 | 권장 |
+| 문서화 | Opencode + vLLM | 로컬 모델 | 필수 |
+
+---
+
+## 핵심 요약
+
+:::note 3줄 요약
+1. **설계는 비싼 모델로 한 번, 실행은 저렴한 모델로 반복.**
+2. **Skills를 문서화하면 어떤 모델도 일관된 퀄리티를 낸다.**
+3. **로컬 vLLM으로 반복 작업을 무료화하는 것이 가성비의 핵심이다.**
+:::
+
+---
+
+## 관련 파일 템플릿 다운로드
+
+프로젝트 바로 적용을 위한 시작 파일 구조:
+
+```bash
+# 디렉토리 구조 초기화 스크립트
+mkdir -p skills
+cat > .cursorrules << 'EOF'
+# 기본 Skills 템플릿
+# 프로젝트에 맞게 수정하세요
+
+## 컨텍스트
+- 기술 스택: (여기에 작성)
+
+## 출력 규칙
+- (여기에 작성)
+
+## 금지 패턴
+- (여기에 작성)
+EOF
+
+cat > CLAUDE.md << 'EOF'
+# 프로젝트: (프로젝트명)
+
+## 도메인 구조
+- (여기에 작성)
+
+## 기술 스택
+- (여기에 작성)
+
+## 현재 미완성 Task
+- (여기에 작성)
+EOF
+
+echo "초기 설정 완료"
+```

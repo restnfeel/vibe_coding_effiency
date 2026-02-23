@@ -1,0 +1,168 @@
+---
+id: cursor-setup
+title: Cursor 설정 — OpenRouter + Skills 등록
+sidebar_label: 03. Cursor 설정
+---
+
+# Cursor 설정 — OpenRouter + Skills 등록
+
+Cursor는 IDE 통합 AI 도구이지만, **기본 설정만으로는 비용 최적화가 어렵다.**
+OpenRouter 연결과 Skills(Rules) 등록을 통해 효율을 극대화한다.
+
+---
+
+## 1. 모델 선정 흐름 (Cursor 내)
+
+```
+도메인 진입 (설계 단계)
+  └── 직접 지정: claude-opus-4-6
+
+하위 Task (반복 구현)
+  └── Auto 모드 활성화 (Cursor 자동 선정)
+
+Skills 반복 실행
+  └── Auto 모드 + .cursorrules 자동 로드
+```
+
+**핵심 원칙:** 복잡한 판단은 수동으로 Opus 지정, 반복 작업은 Auto 모드에 맡긴다.
+
+---
+
+## 2. OpenRouter 연결
+
+Cursor에서 여러 모델을 비용 효율적으로 사용하려면 **OpenRouter**를 통해 연결한다.
+
+### 설정 경로
+
+```
+Cursor Settings → Models → Add Custom Model
+```
+
+### 입력 값
+
+```
+URL:     https://openrouter.ai/api/v1
+API Key: sk-or-v1-...          (OpenRouter에서 발급)
+Model:   openai/gpt-4o
+         anthropic/claude-opus-4-6
+         google/gemini-flash-1.5
+         x-ai/grok-2-1212
+```
+
+### 장점
+
+- 모델별 가격 비교 후 실시간으로 최적 모델 교체 가능
+- Cursor 내에서 OpenAI 호환 API 형식으로 모든 모델 사용
+- 단일 API 키로 Gemini, Grok, Kimi 등 통합 관리
+
+:::tip OpenRouter 가격 비교
+[openrouter.ai/models](https://openrouter.ai/models) 에서 모델별 입력/출력 토큰 가격을 비교할 수 있다.
+동일 작업에 어떤 모델이 가장 저렴한지 미리 확인하라.
+:::
+
+---
+
+## 3. Skills 등록 — `.cursorrules`
+
+Skills를 `.cursor/rules/` 또는 프로젝트 루트 `.cursorrules`에 등록하면
+**모든 Cursor 세션에서 자동으로 로드**된다.
+
+### 파일 위치 옵션
+
+```
+프로젝트 루트
+├── .cursorrules              # 전역 Skills (항상 로드)
+└── .cursor/
+    └── rules/
+        ├── api.md            # API 개발 Skills (조건부 로드 가능)
+        └── test.md           # 테스트 Skills
+```
+
+### Skills 작성 템플릿
+
+```markdown
+# Skills: [작업명]
+
+## 컨텍스트 (모델이 알아야 할 것)
+- 기술 스택: FastAPI + SQLAlchemy 2.0 (async)
+- DB: PostgreSQL
+- 인증: JWT (jose 라이브러리)
+
+## 출력 규칙 (항상 따를 것)
+- Router / Service / Schema / Model 레이어 분리
+- Pydantic v2 기준으로 스키마 작성
+- 에러: HTTPException + custom ErrorResponse 사용
+
+## 금지 패턴
+- sync 함수 사용 금지 (모두 async/await)
+- print() 대신 logging 사용
+- 하드코딩된 시크릿 금지
+```
+
+### 실제 예시 — API 개발 Skills
+
+```markdown
+# Skills: FastAPI 개발
+
+- FastAPI 기반, Pydantic v2 사용
+- 에러 핸들링: HTTPException + custom error schema
+- 테스트: pytest + httpx 비동기 패턴
+- 모든 엔드포인트 타입 힌트 100% 적용
+- 응답 모델 명시 (response_model 파라미터)
+
+# Skills: 코드 리뷰
+
+- 보안 취약점 우선 체크 (SQL injection, XSS, 인증 누락)
+- 타입 힌트 100% 적용 여부 확인
+- N+1 쿼리 문제 확인
+- 에러 핸들링 누락 여부 확인
+```
+
+---
+
+## 4. 도메인 컨텍스트 저장 — `CLAUDE.md`
+
+`.cursorrules`가 Skills 정의라면, `CLAUDE.md`는 **도메인 컨텍스트 저장소**다.
+
+```markdown
+# 프로젝트: [프로젝트명]
+
+## 도메인 구조
+- 인증 도메인: JWT 기반, users 테이블
+- 상품 도메인: products, categories 테이블
+- 주문 도메인: orders, order_items 테이블 (진행 중)
+
+## 기술 스택
+- Backend: FastAPI 0.115, Python 3.12
+- DB: PostgreSQL 16, SQLAlchemy 2.0 (async)
+- Test: pytest 8, httpx 0.27
+
+## 현재 미완성 Task
+- [ ] 주문 도메인 결제 연동 (Stripe)
+- [ ] 알림 도메인 설계 필요
+
+## 주요 결정사항
+- 2024-12-01: 비동기 아키텍처 전환 결정 (동시성 요구사항 증가)
+```
+
+:::info 세션 전환 시 복원 방법
+```
+새 Cursor 세션 첫 메시지:
+"CLAUDE.md를 읽고 현재 프로젝트 상태를 파악한 후,
+[도메인명] 도메인의 [Task명] 작업을 이어서 진행해줘."
+```
+:::
+
+---
+
+## 5. Cursor Auto 모드 활용 팁
+
+| 상황 | 권장 설정 |
+|------|-----------|
+| 도메인 설계 중 | 모델 직접 지정 (Opus 4.6) |
+| 기능 구현 중 | Auto 모드 + `.cursorrules` 로드 확인 |
+| 코드 리뷰 요청 | Grok Code 직접 지정 |
+| 빠른 UI 작업 | Gemini Flash 직접 지정 |
+
+**Auto 모드의 한계:** Cursor가 항상 최적 모델을 선택하지 않는다.
+비용이 중요한 세션에서는 수동 지정을 선호하라.

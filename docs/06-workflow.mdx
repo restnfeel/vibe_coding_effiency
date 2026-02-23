@@ -1,0 +1,210 @@
+---
+id: workflow
+title: 실전 워크플로우
+sidebar_label: 06. 실전 워크플로우
+---
+
+# 실전 워크플로우
+
+이론을 실제 개발 사이클에 어떻게 적용하는지 A to Z로 보여준다.
+**신규 기능 개발**과 **기술 부채 해소** 두 가지 시나리오를 다룬다.
+
+---
+
+## 시나리오 A: 신규 기능 개발
+
+### Phase 1 — 도메인 분석 (Cursor + Opus 4.6)
+
+**목표:** 요구사항을 도메인 구조로 변환하고 Task를 분리한다.
+
+```
+도구: Cursor
+모델: Claude Opus 4.6 (수동 지정)
+예상 비용: $0.5~2
+
+[작업]
+1. 요구사항 문서를 Cursor에 첨부
+2. 도메인 분석 프롬프트 실행 (→ 05. 프롬프트 예시 참고)
+3. 결과를 CLAUDE.md에 저장
+4. Task 목록을 JSON으로 추출
+```
+
+**산출물:**
+- 업데이트된 `CLAUDE.md`
+- `tasks.json` (구현할 Task 목록)
+
+---
+
+### Phase 2 — 하위 Task 구현 (Cursor + Auto 모드)
+
+**목표:** 분리된 Task를 순서에 따라 빠르게 구현한다.
+
+```
+도구: Cursor
+모델: Auto 모드 + .cursorrules 로드 확인
+예상 비용: Task당 $0.05~0.2
+
+[작업]
+1. .cursorrules에 해당 도메인 Skills 등록 확인
+2. 각 Task를 순서대로 Cursor에서 실행
+3. 생성된 코드를 즉시 검토 및 수정
+4. 파일별로 저장
+```
+
+**팁:**
+- 한 번에 여러 Task를 요청하면 품질이 떨어진다. **Task 단위로 분리하여 요청하라.**
+- 코드 생성 후 즉시 확인하고 다음 Task로 넘어가라.
+
+---
+
+### Phase 3 — 배치 구현 (Opencode + Kimi k2.5)
+
+**목표:** CRUD, 테스트 등 패턴이 반복되는 작업을 배치로 처리한다.
+
+```
+도구: Opencode (터미널)
+모델: Kimi k2.5 (또는 Gemini Flash)
+예상 비용: $0.02~0.1
+
+[작업]
+1. tasks.json에서 반복 작업 추출
+2. Skills 파일 적용하여 Opencode 배치 실행
+3. 생성된 파일 확인 및 통합
+```
+
+```bash
+# 테스트 코드 일괄 생성 예시
+for service_file in src/*/service.py; do
+  domain=$(dirname $service_file | xargs basename)
+  opencode run \
+    --model openrouter/moonshotai/kimi-k2.5 \
+    --sysprompt skills/test_gen.md \
+    --prompt "다음 서비스 코드에 대한 pytest 테스트 생성: $(cat $service_file)" \
+    --output "tests/test_${domain}.py"
+done
+```
+
+---
+
+### Phase 4 — 반복 작업 오프로드 (Opencode + vLLM)
+
+**목표:** 리팩터링, 타입 힌트 추가, 문서화 등 반복 작업을 무료로 처리한다.
+
+```
+도구: Opencode + 로컬 vLLM
+모델: Qwen2.5-Coder (로컬)
+예상 비용: $0
+
+[작업]
+1. vLLM 서버 실행 확인 (localhost:8000)
+2. 리팩터링 대상 파일 목록 추출
+3. Skills 적용하여 일괄 처리
+```
+
+```bash
+# 타입 힌트 일괄 추가 예시
+find src -name "*.py" | while read file; do
+  opencode run \
+    --model local-vllm/Qwen2.5-Coder-7B-Instruct \
+    --sysprompt skills/refactor.md \
+    --prompt "다음 파일에 타입 힌트를 100% 추가해줘: $(cat $file)" \
+    --output "$file"
+done
+```
+
+---
+
+### Phase 5 — 최종 코드 리뷰 (Cursor + Grok Code)
+
+**목표:** 보안, 성능, 코드 품질을 최종 점검한다.
+
+```
+도구: Cursor
+모델: Grok Code (또는 Claude Opus 4.6)
+예상 비용: $0.1~0.5
+
+[작업]
+1. git diff로 변경사항 추출
+2. 코드 리뷰 프롬프트 실행 (→ 05. 프롬프트 예시 참고)
+3. Critical/Warning 항목 수정
+4. 최종 확인 후 PR 생성
+```
+
+---
+
+### 전체 흐름 요약
+
+```
+요구사항
+  │
+  ▼
+[Phase 1] Cursor + Opus 4.6
+  도메인 분석 + Task 분리 → CLAUDE.md, tasks.json
+  │
+  ▼
+[Phase 2] Cursor + Auto
+  핵심 Task 구현 → 코드 파일
+  │
+  ▼
+[Phase 3] Opencode + Kimi
+  반복 Tasks 배치 처리 → CRUD, 테스트 파일
+  │
+  ▼
+[Phase 4] Opencode + vLLM
+  리팩터링 + 타입힌트 + 문서화 → 정리된 코드
+  │
+  ▼
+[Phase 5] Cursor + Grok Code
+  최종 리뷰 + 보안 체크 → PR
+```
+
+---
+
+## 시나리오 B: 기술 부채 해소
+
+빠르게 쌓인 코드를 정리하는 워크플로우다.
+
+### Step 1 — 부채 목록 추출
+
+```
+도구: Cursor (Opus 4.6)
+프롬프트:
+"다음 코드베이스를 분석하고 기술 부채를 목록화해줘.
+ 심각도(Critical/Major/Minor)와 예상 작업량(Small/Medium/Large)으로 분류해줘."
+```
+
+### Step 2 — 우선순위 정렬
+
+| 우선순위 | 조건 | 접근 |
+|----------|------|------|
+| 1순위 | Critical + Small | 즉시 Cursor에서 수동 처리 |
+| 2순위 | Major + 반복 패턴 | Skills 작성 → Opencode 배치 |
+| 3순위 | Minor + 패턴 반복 | vLLM 자동화 |
+
+### Step 3 — 배치 자동화
+
+Minor 항목은 Skills를 한 번 만들어두고 vLLM으로 전체 처리한다.
+
+```bash
+# 예: docstring 일괄 추가
+find src -name "*.py" | xargs -I{} opencode run \
+  --model local-vllm/Qwen2.5-Coder-7B-Instruct \
+  --sysprompt skills/docstring_gen.md \
+  --prompt "$(cat {})" \
+  --output {}
+```
+
+---
+
+## 비용 시뮬레이션 (중규모 기능 개발 기준)
+
+| Phase | 모델 | 예상 비용 |
+|-------|------|-----------|
+| 도메인 분석 + Task 분리 | Opus 4.6 (1세션) | ~$1.5 |
+| 핵심 Task 구현 (5개) | Auto (Gemini Flash 기준) | ~$0.5 |
+| 배치 구현 (테스트 10개) | Kimi k2.5 | ~$0.3 |
+| 리팩터링 (파일 20개) | 로컬 vLLM | $0 |
+| 최종 코드 리뷰 | Grok Code | ~$0.3 |
+| **합계** | | **~$2.6** |
+
+동일 작업을 Opus 4.6으로만 진행 시 예상 비용: **$15~25**
