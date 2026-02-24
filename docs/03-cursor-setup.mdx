@@ -60,6 +60,12 @@ Model:   openai/gpt-4o
 동일 작업에 어떤 모델이 가장 저렴한지 미리 확인하라.
 :::
 
+![Cursor 모델 설정 화면](./img/cursor_model_setting.jpg)
+
+OpenAI 형식으로 세팅하시고 키와 URL을 넣는 방식입니다.
+추후 ollama, 자체 구축한 LLM Serving API를 저런 식으로 넣고 모델을 추가하시면 됩니다.
+LiteLLM을 이용해서 단일 형태(OpenAI 형태의 코드)로도 통일성을 주셔도 됩니다.
+
 ---
 
 ## 3. Skills 등록 — `.cursorrules`
@@ -71,11 +77,9 @@ Skills를 `.cursor/rules/` 또는 프로젝트 루트 `.cursorrules`에 등록�
 
 ```
 프로젝트 루트
-├── .cursorrules              # 전역 Skills (항상 로드)
 └── .cursor/
-    └── rules/
-        ├── api.md            # API 개발 Skills (조건부 로드 가능)
-        └── test.md           # 테스트 Skills
+    ├── rules/
+    └── skills/
 ```
 
 ### Skills 작성 템플릿
@@ -120,9 +124,15 @@ Skills를 `.cursor/rules/` 또는 프로젝트 루트 `.cursorrules`에 등록�
 
 ---
 
-## 4. 도메인 컨텍스트 저장 — `CLAUDE.md`
+## 4. 공통 지침서 — `AGENTS.md`
 
-`.cursorrules`가 Skills 정의라면, `CLAUDE.md`는 **도메인 컨텍스트 저장소**다.
+`.cursor/rules/` 하위 폴더는 Cursor에 맞는 룰이라면, `AGENTS.md`는 **공용적인 툴에 대한 지침**이다.
+
+아래와 같이 바이브로 세팅을 정리할 수도 있다.
+
+```
+@AGENTS.md 파일의 형식을 참고하고 @000 프로젝트의 지침을 분석해서 cursor rules를 전체 업데이트 해줘
+```
 
 ```markdown
 # 프로젝트: [프로젝트명]
@@ -145,14 +155,6 @@ Skills를 `.cursor/rules/` 또는 프로젝트 루트 `.cursorrules`에 등록�
 - 2024-12-01: 비동기 아키텍처 전환 결정 (동시성 요구사항 증가)
 ```
 
-:::info 세션 전환 시 복원 방법
-```
-새 Cursor 세션 첫 메시지:
-"CLAUDE.md를 읽고 현재 프로젝트 상태를 파악한 후,
-[도메인명] 도메인의 [Task명] 작업을 이어서 진행해줘."
-```
-:::
-
 ---
 
 ## 5. Cursor Auto 모드 활용 팁
@@ -166,3 +168,9 @@ Skills를 `.cursor/rules/` 또는 프로젝트 루트 `.cursorrules`에 등록�
 
 **Auto 모드의 한계:** Cursor가 항상 최적 모델을 선택하지 않는다.
 비용이 중요한 세션에서는 수동 지정을 선호하라.
+
+:::tip 2026년부터의 Cursor Auto 모드 변화
+26년부터 Cursor가 Auto를 액티브하면 자체 모델인 **composer**를 사용하도록 변경되었다.
+즉 사용 모드가 **Usage(자체 모델)** 와 **API(외부 모델)** 2개로 나뉘게 되니,
+두 모드를 번갈아 가며 꽉 채워서 사용할 수 있도록 전략적으로 활용하라.
+:::
